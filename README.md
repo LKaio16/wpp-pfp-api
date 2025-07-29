@@ -176,6 +176,23 @@ Se a conexão falhar, tente:
 - Confirme se o usuário tem WhatsApp
 - Alguns usuários podem ter privacidade configurada
 
+## 🚀 Deploy
+
+### Vercel (Demonstração)
+A API está configurada para deploy no Vercel. Veja o guia completo em [DEPLOY.md](DEPLOY.md).
+
+```bash
+# Deploy automático via Vercel
+# 1. Conecte o repositório no Vercel
+# 2. Deploy automático a cada push
+```
+
+### Alternativas para produção
+- **Railway** - Suporte a conexões persistentes
+- **Heroku** - Dynos permitem processos contínuos  
+- **DigitalOcean** - Droplets para controle total
+- **AWS EC2** - Instância dedicada
+
 ## 📄 Licença
 
 MIT License

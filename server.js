@@ -9,6 +9,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isVercel = process.env.VERCEL === '1';
 
 // Middleware
 app.use(cors());
@@ -200,20 +201,28 @@ app.get('/interface', (req, res) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📱 API WhatsApp Profile Photo`);
-    console.log(`🌐 http://localhost:${PORT}`);
-    console.log(`🎨 Interface gráfica: http://localhost:${PORT}/index.html`);
-    console.log(`\nPara usar a API:`);
-    console.log(`1. Acesse a interface: http://localhost:${PORT}/index.html`);
-    console.log(`2. Clique em "Conectar" e escaneie o QR Code`);
-    console.log(`3. Digite um número e clique em "Buscar"`);
-    console.log(`\nOu use via API:`);
-    console.log(`- GET /status - Verificar status`);
-    console.log(`- POST /connect - Conectar ao WhatsApp`);
-    console.log(`- GET /profile-photo/5511999999999 - Obter foto de perfil`);
-});
+if (!isVercel) {
+    app.listen(PORT, () => {
+        console.log(`🚀 Servidor rodando na porta ${PORT}`);
+        console.log(`📱 API WhatsApp Profile Photo`);
+        console.log(`🌐 http://localhost:${PORT}`);
+        console.log(`🎨 Interface gráfica: http://localhost:${PORT}/index.html`);
+        console.log(`\nPara usar a API:`);
+        console.log(`1. Acesse a interface: http://localhost:${PORT}/index.html`);
+        console.log(`2. Clique em "Conectar" e escaneie o QR Code`);
+        console.log(`3. Digite um número e clique em "Buscar"`);
+        console.log(`\nOu use via API:`);
+        console.log(`- GET /status - Verificar status`);
+        console.log(`- POST /connect - Conectar ao WhatsApp`);
+        console.log(`- GET /profile-photo/5511999999999 - Obter foto de perfil`);
+    });
 
-// Conectar automaticamente ao iniciar
-connectToWhatsApp(); 
+    // Conectar automaticamente ao iniciar (apenas em desenvolvimento)
+    connectToWhatsApp();
+} else {
+    console.log('🚀 API WhatsApp Profile Photo - Deployado no Vercel');
+    console.log('📱 Use a interface local para conectar ao WhatsApp');
+}
+
+// Exportar para Vercel
+module.exports = app; 
