@@ -4,112 +4,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API WhatsApp Profile Photo</title>
+    <title>WhatsApp Profile Photo API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fab fa-whatsapp"></i> API WhatsApp Profile Photo</h1>
-            <p>Interface para testar a API de fotos de perfil do WhatsApp</p>
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fab fa-whatsapp"></i>
+                    <h1>WhatsApp Profile Photo API</h1>
+                </div>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Verificando...</span>
+                </div>
+            </div>
         </header>
 
-        <div class="status-card">
-            <h2><i class="fas fa-signal"></i> Status da Conexão</h2>
-            <div class="status-indicator" id="statusIndicator">
-                <div class="status-dot"></div>
-                <span id="statusText">Verificando...</span>
-            </div>
-            <div class="status-actions">
-                <button id="checkStatusBtn" class="btn btn-primary">
-                    <i class="fas fa-sync"></i> Verificar Status
-                </button>
-                <button id="connectBtn" class="btn btn-success">
-                    <i class="fas fa-plug"></i> Conectar
-                </button>
-                <button id="disconnectBtn" class="btn btn-danger">
-                    <i class="fas fa-unplug"></i> Desconectar
-                </button>
-            </div>
-        </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Connection Section -->
+            <section class="card connection-section">
+                <div class="card-header">
+                    <i class="fas fa-wifi"></i>
+                    <h2>Status da Conexão</h2>
+                </div>
+                <div class="card-body">
+                    <div class="connection-status" id="connectionStatus">
+                        <div class="status-info">
+                            <span class="status-label">Status:</span>
+                            <span class="status-value" id="statusValue">Verificando...</span>
+                        </div>
+                        <div class="connection-actions">
+                            <button class="btn btn-primary" id="connectBtn" onclick="connect()">
+                                <i class="fas fa-plug"></i>
+                                Conectar
+                            </button>
+                            <button class="btn btn-secondary" id="disconnectBtn" onclick="disconnect()"
+                                style="display: none;">
+                                <i class="fas fa-unlink"></i>
+                                Desconectar
+                            </button>
+                        </div>
+                    </div>
 
-        <div class="main-card">
-            <h2><i class="fas fa-search"></i> Buscar Foto de Perfil</h2>
+                    <!-- QR Code Section -->
+                    <div class="qr-section" id="qrSection" style="display: none;">
+                        <div class="qr-container">
+                            <h3><i class="fas fa-qrcode"></i> Escaneie o QR Code</h3>
+                            <div class="qr-code-wrapper">
+                                <img id="qrCodeImage" src="" alt="QR Code" style="display: none;">
+                                <div class="qr-loading" id="qrLoading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Gerando QR Code...</p>
+                                </div>
+                            </div>
+                            <div class="qr-instructions">
+                                <p><i class="fas fa-info-circle"></i> Abra o WhatsApp no seu celular e escaneie o QR
+                                    Code acima</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-            <div class="input-group">
-                <label for="phoneNumber">Número de Telefone:</label>
-                <div class="input-wrapper">
-                    <input type="text" id="phoneNumber" placeholder="Ex: 5511999999999 ou 11-99999-9999" />
-                    <button id="searchBtn" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
+            <!-- Search Section -->
+            <section class="card search-section">
+                <div class="card-header">
+                    <i class="fas fa-search"></i>
+                    <h2>Buscar Foto de Perfil</h2>
                 </div>
-                <small class="help-text">
-                    Aceita formatos: 5511999999999, 11999999999, 11-99999-9999, (11) 99999-9999
-                </small>
-            </div>
+                <div class="card-body">
+                    <div class="search-form">
+                        <div class="input-group">
+                            <label for="phoneNumber">Número do WhatsApp:</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-phone"></i>
+                                <input type="text" id="phoneNumber" placeholder="Ex: 5511999999999" maxlength="15">
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="searchProfile()" id="searchBtn">
+                            <i class="fas fa-search"></i>
+                            Buscar
+                        </button>
+                    </div>
 
-            <div class="result-container" id="resultContainer" style="display: none;">
-                <div class="result-header">
-                    <h3><i class="fas fa-image"></i> Resultado</h3>
-                    <button id="clearResultBtn" class="btn btn-small">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <!-- Result Section -->
+                    <div class="result-section" id="resultSection" style="display: none;">
+                        <div class="result-content">
+                            <div class="profile-info">
+                                <div class="profile-photo" id="profilePhoto">
+                                    <img id="profileImage" src="" alt="Foto de perfil">
+                                </div>
+                                <div class="profile-details">
+                                    <h3 id="profileNumber"></h3>
+                                    <p id="profileStatus"></p>
+                                </div>
+                            </div>
+                            <div class="result-actions">
+                                <button class="btn btn-outline" onclick="copyImageUrl()">
+                                    <i class="fas fa-copy"></i>
+                                    Copiar URL
+                                </button>
+                                <a class="btn btn-outline" id="downloadBtn" href="" download>
+                                    <i class="fas fa-download"></i>
+                                    Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="result-content" id="resultContent">
-                    <!-- Resultado será inserido aqui -->
-                </div>
-            </div>
-        </div>
+            </section>
 
-        <div class="examples-card">
-            <h2><i class="fas fa-lightbulb"></i> Exemplos de Uso</h2>
-            <div class="examples-grid">
-                <div class="example-item">
-                    <h4>Com código do país</h4>
-                    <code>5511999999999</code>
-                    <button class="btn btn-small" onclick="setExample('5511999999999')">
-                        <i class="fas fa-copy"></i> Usar
-                    </button>
+            <!-- Examples Section -->
+            <section class="card examples-section">
+                <div class="card-header">
+                    <i class="fas fa-lightbulb"></i>
+                    <h2>Exemplos de Uso</h2>
                 </div>
-                <div class="example-item">
-                    <h4>Sem código do país</h4>
-                    <code>11999999999</code>
-                    <button class="btn btn-small" onclick="setExample('11999999999')">
-                        <i class="fas fa-copy"></i> Usar
-                    </button>
+                <div class="card-body">
+                    <div class="examples-grid">
+                        <div class="example-item">
+                            <h4>Via Interface</h4>
+                            <p>Use a interface acima para buscar fotos de perfil de forma fácil e visual.</p>
+                        </div>
+                        <div class="example-item">
+                            <h4>Via API</h4>
+                            <p>Faça requisições diretas para a API:</p>
+                            <code>GET /profile-photo/5511999999999</code>
+                        </div>
+                        <div class="example-item">
+                            <h4>Status da API</h4>
+                            <p>Verifique se a API está funcionando:</p>
+                            <code>GET /status</code>
+                        </div>
+                    </div>
                 </div>
-                <div class="example-item">
-                    <h4>Com formatação</h4>
-                    <code>11-99999-9999</code>
-                    <button class="btn btn-small" onclick="setExample('11-99999-9999')">
-                        <i class="fas fa-copy"></i> Usar
-                    </button>
-                </div>
-                <div class="example-item">
-                    <h4>Com parênteses</h4>
-                    <code>(11) 99999-9999</code>
-                    <button class="btn btn-small" onclick="setExample('(11) 99999-9999')">
-                        <i class="fas fa-copy"></i> Usar
-                    </button>
-                </div>
-            </div>
-        </div>
+            </section>
 
-        <div class="logs-card">
-            <h2><i class="fas fa-terminal"></i> Logs da API</h2>
-            <div class="logs-container" id="logsContainer">
-                <div class="log-entry info">
-                    <span class="timestamp">[<span id="currentTime"></span>]</span>
-                    <span class="message">Interface carregada. Clique em "Verificar Status" para começar.</span>
+            <!-- Logs Section -->
+            <section class="card logs-section">
+                <div class="card-header">
+                    <i class="fas fa-terminal"></i>
+                    <h2>Logs da API</h2>
+                    <button class="btn btn-sm btn-outline" onclick="clearLogs()">
+                        <i class="fas fa-trash"></i>
+                        Limpar
+                    </button>
                 </div>
-            </div>
-            <button id="clearLogsBtn" class="btn btn-small">
-                <i class="fas fa-trash"></i> Limpar Logs
-            </button>
-        </div>
+                <div class="card-body">
+                    <div class="logs-container" id="logsContainer">
+                        <div class="log-entry">
+                            <span class="log-time">[Sistema]</span>
+                            <span class="log-message">Interface carregada. Aguardando conexão...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 WhatsApp Profile Photo API. Desenvolvido com ❤️</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>

@@ -19,6 +19,7 @@ app.use(express.static('public'));
 // Variável global para armazenar a conexão do WhatsApp
 let sock = null;
 let isConnected = false;
+let currentQR = null;
 
 // Função para inicializar a conexão do WhatsApp
 async function connectToWhatsApp() {
@@ -33,6 +34,7 @@ async function connectToWhatsApp() {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
+            currentQR = qr;
             console.log('\n📱 QR Code gerado! Escaneie com o WhatsApp:');
             console.log('='.repeat(50));
 
@@ -45,6 +47,17 @@ async function connectToWhatsApp() {
                 console.log(qrText);
                 console.log('='.repeat(50));
                 console.log('💡 Dica: Se o QR Code não aparecer bem, tente aumentar o tamanho da janela do terminal');
+
+                // Gerar QR Code como imagem para a web
+                const qrImage = await qrcode.toDataURL(qr, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                });
+                currentQR = qrImage;
             } catch (error) {
                 console.log('❌ Erro ao gerar QR Code:', error.message);
                 console.log('🔗 QR Code string:', qr);
@@ -61,6 +74,7 @@ async function connectToWhatsApp() {
         } else if (connection === 'open') {
             console.log('✅ Conectado ao WhatsApp!');
             isConnected = true;
+            currentQR = null; // Limpar QR Code quando conectado
         }
     });
 
@@ -71,6 +85,7 @@ async function connectToWhatsApp() {
 app.get('/status', (req, res) => {
     res.json({
         connected: isConnected,
+        qrCode: currentQR,
         message: isConnected ? 'Conectado ao WhatsApp' : 'Desconectado do WhatsApp'
     });
 });

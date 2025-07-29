@@ -1,287 +1,330 @@
-// Configurações da API
-const API_BASE_URL = 'http://localhost:3000';
+// Variáveis globais
+let isConnected = false;
+let currentQR = null;
 
 // Elementos do DOM
 const statusIndicator = document.getElementById('statusIndicator');
-const statusText = document.getElementById('statusText');
-const statusDot = statusIndicator.querySelector('.status-dot');
-const checkStatusBtn = document.getElementById('checkStatusBtn');
+const statusDot = document.querySelector('.status-dot');
+const statusText = document.querySelector('.status-text');
+const statusValue = document.getElementById('statusValue');
 const connectBtn = document.getElementById('connectBtn');
 const disconnectBtn = document.getElementById('disconnectBtn');
+const qrSection = document.getElementById('qrSection');
+const qrCodeImage = document.getElementById('qrCodeImage');
+const qrLoading = document.getElementById('qrLoading');
 const phoneNumberInput = document.getElementById('phoneNumber');
 const searchBtn = document.getElementById('searchBtn');
-const resultContainer = document.getElementById('resultContainer');
-const resultContent = document.getElementById('resultContent');
-const clearResultBtn = document.getElementById('clearResultBtn');
+const resultSection = document.getElementById('resultSection');
+const profileImage = document.getElementById('profileImage');
+const profileNumber = document.getElementById('profileNumber');
+const profileStatus = document.getElementById('profileStatus');
+const downloadBtn = document.getElementById('downloadBtn');
 const logsContainer = document.getElementById('logsContainer');
-const clearLogsBtn = document.getElementById('clearLogsBtn');
-const currentTimeSpan = document.getElementById('currentTime');
-
-// Estado da aplicação
-let isConnected = false;
-let isChecking = false;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', function () {
-    updateCurrentTime();
-    setInterval(updateCurrentTime, 1000);
-
-    // Event listeners
-    checkStatusBtn.addEventListener('click', checkStatus);
-    connectBtn.addEventListener('click', connectWhatsApp);
-    disconnectBtn.addEventListener('click', disconnectWhatsApp);
-    searchBtn.addEventListener('click', searchProfilePhoto);
-    clearResultBtn.addEventListener('click', clearResult);
-    clearLogsBtn.addEventListener('click', clearLogs);
-
-    // Enter key no input
-    phoneNumberInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            searchProfilePhoto();
-        }
-    });
-
-    // Verificar status inicial
+    addLog('Interface carregada. Aguardando conexão...', 'info');
     checkStatus();
 
-    addLog('Interface inicializada com sucesso!', 'success');
+    // Verificar status periodicamente
+    setInterval(() => {
+        if (isConnected) {
+            checkStatus();
+        }
+    }, 30000); // Verificar a cada 30 segundos se estiver conectado
 });
 
-// Funções de utilidade
-function updateCurrentTime() {
-    const now = new Date();
-    currentTimeSpan.textContent = now.toLocaleTimeString();
-}
-
-function addLog(message, type = 'info') {
-    const now = new Date();
-    const timestamp = now.toLocaleTimeString();
-
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry ${type}`;
-    logEntry.innerHTML = `
-        <span class="timestamp">[${timestamp}]</span>
-        <span class="message">${message}</span>
-    `;
-
-    logsContainer.appendChild(logEntry);
-    logsContainer.scrollTop = logsContainer.scrollHeight;
-}
-
-function updateStatus(connected, message) {
-    isConnected = connected;
-    statusText.textContent = message;
-
-    statusDot.className = 'status-dot';
-    if (connected) {
-        statusDot.classList.add('connected');
-    } else if (isChecking) {
-        statusDot.classList.add('connecting');
-    }
-
-    // Atualizar estado dos botões
-    connectBtn.disabled = connected;
-    disconnectBtn.disabled = !connected;
-    searchBtn.disabled = !connected;
-}
-
-function showLoading(element) {
-    element.disabled = true;
-    const originalText = element.innerHTML;
-    element.innerHTML = '<div class="loading"></div>';
-    return originalText;
-}
-
-function hideLoading(element, originalText) {
-    element.disabled = false;
-    element.innerHTML = originalText;
-}
-
-// Funções da API
+// Função para verificar status da API
 async function checkStatus() {
-    if (isChecking) return;
-
-    isChecking = true;
-    updateStatus(false, 'Verificando...');
-
-    const originalText = showLoading(checkStatusBtn);
-
     try {
-        addLog('Verificando status da conexão...', 'info');
-
-        const response = await fetch(`${API_BASE_URL}/status`);
+        const response = await fetch('/status');
         const data = await response.json();
 
-        if (data.connected) {
-            updateStatus(true, 'Conectado ao WhatsApp');
-            addLog('✅ WhatsApp conectado com sucesso!', 'success');
-        } else {
-            updateStatus(false, 'Desconectado do WhatsApp');
-            addLog('⚠️ WhatsApp não está conectado', 'warning');
+        updateConnectionStatus(data.connected, data.message);
+
+        // Atualizar QR Code se disponível
+        if (data.qrCode && !isConnected) {
+            showQRCode(data.qrCode);
+        } else if (isConnected) {
+            hideQRCode();
         }
 
+        addLog(`Status verificado: ${data.message}`, 'info');
     } catch (error) {
-        updateStatus(false, 'Erro ao verificar status');
-        addLog(`❌ Erro ao verificar status: ${error.message}`, 'error');
-    } finally {
-        hideLoading(checkStatusBtn, originalText);
-        isChecking = false;
+        addLog(`Erro ao verificar status: ${error.message}`, 'error');
+        updateConnectionStatus(false, 'Erro de conexão');
     }
 }
 
-async function connectWhatsApp() {
-    const originalText = showLoading(connectBtn);
+// Função para atualizar status da conexão
+function updateConnectionStatus(connected, message) {
+    isConnected = connected;
 
+    // Atualizar indicador visual
+    if (connected) {
+        statusDot.classList.add('connected');
+        statusDot.classList.remove('connecting');
+        statusText.textContent = 'Conectado';
+        statusValue.textContent = 'Conectado ao WhatsApp';
+
+        // Atualizar botões
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-flex';
+
+        // Esconder QR Code
+        hideQRCode();
+    } else {
+        statusDot.classList.remove('connected');
+        statusDot.classList.add('connecting');
+        statusText.textContent = 'Desconectado';
+        statusValue.textContent = 'Desconectado do WhatsApp';
+
+        // Atualizar botões
+        connectBtn.style.display = 'inline-flex';
+        disconnectBtn.style.display = 'none';
+    }
+}
+
+// Função para mostrar QR Code
+function showQRCode(qrCodeData) {
+    qrSection.style.display = 'block';
+    qrLoading.style.display = 'flex';
+    qrCodeImage.style.display = 'none';
+
+    // Se o QR Code for uma string (data URL), mostrar a imagem
+    if (qrCodeData && qrCodeData.startsWith('data:image')) {
+        qrCodeImage.src = qrCodeData;
+        qrCodeImage.onload = function () {
+            qrLoading.style.display = 'none';
+            qrCodeImage.style.display = 'block';
+            addLog('QR Code gerado e exibido na interface', 'success');
+        };
+    } else {
+        qrLoading.style.display = 'none';
+        addLog('QR Code disponível no terminal', 'info');
+    }
+}
+
+// Função para esconder QR Code
+function hideQRCode() {
+    qrSection.style.display = 'none';
+    qrLoading.style.display = 'none';
+    qrCodeImage.style.display = 'none';
+}
+
+// Função para conectar ao WhatsApp
+async function connect() {
     try {
         addLog('Iniciando conexão com WhatsApp...', 'info');
 
-        const response = await fetch(`${API_BASE_URL}/connect`, {
-            method: 'POST'
+        const response = await fetch('/connect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
+
         const data = await response.json();
 
-        addLog(data.message, 'info');
-
-        // Aguardar um pouco e verificar status novamente
-        setTimeout(() => {
-            checkStatus();
-        }, 2000);
-
+        if (data.success) {
+            addLog('Conexão iniciada. Aguarde o QR Code...', 'success');
+            // Verificar status após um breve delay para pegar o QR Code
+            setTimeout(checkStatus, 2000);
+        } else {
+            addLog(`Erro ao conectar: ${data.message}`, 'error');
+        }
     } catch (error) {
-        addLog(`❌ Erro ao conectar: ${error.message}`, 'error');
-    } finally {
-        hideLoading(connectBtn, originalText);
+        addLog(`Erro ao conectar: ${error.message}`, 'error');
     }
 }
 
-async function disconnectWhatsApp() {
-    const originalText = showLoading(disconnectBtn);
-
+// Função para desconectar do WhatsApp
+async function disconnect() {
     try {
         addLog('Desconectando do WhatsApp...', 'info');
 
-        const response = await fetch(`${API_BASE_URL}/disconnect`, {
-            method: 'POST'
+        const response = await fetch('/disconnect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
         });
+
         const data = await response.json();
 
-        updateStatus(false, 'Desconectado do WhatsApp');
-        addLog(data.message, 'success');
-
+        if (data.success) {
+            addLog('Desconectado do WhatsApp', 'success');
+            updateConnectionStatus(false, 'Desconectado do WhatsApp');
+        } else {
+            addLog(`Erro ao desconectar: ${data.message}`, 'error');
+        }
     } catch (error) {
-        addLog(`❌ Erro ao desconectar: ${error.message}`, 'error');
-    } finally {
-        hideLoading(disconnectBtn, originalText);
+        addLog(`Erro ao desconectar: ${error.message}`, 'error');
     }
 }
 
-async function searchProfilePhoto() {
+// Função para buscar foto de perfil
+async function searchProfile() {
     const phoneNumber = phoneNumberInput.value.trim();
 
     if (!phoneNumber) {
-        addLog('❌ Por favor, insira um número de telefone', 'error');
+        addLog('Por favor, insira um número de telefone', 'warning');
         return;
     }
 
     if (!isConnected) {
-        addLog('❌ WhatsApp não está conectado. Conecte primeiro.', 'error');
+        addLog('WhatsApp não está conectado. Conecte primeiro.', 'warning');
         return;
     }
 
-    const originalText = showLoading(searchBtn);
-
     try {
-        addLog(`🔍 Buscando foto de perfil para: ${phoneNumber}`, 'info');
+        addLog(`Buscando foto de perfil para: ${phoneNumber}`, 'info');
 
-        const response = await fetch(`${API_BASE_URL}/profile-photo/${phoneNumber}`);
+        // Desabilitar botão durante a busca
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+
+        const response = await fetch(`/profile-photo/${phoneNumber}`);
         const data = await response.json();
 
         if (data.success) {
-            showSuccessResult(data);
-            addLog(`✅ Foto encontrada para ${phoneNumber}`, 'success');
+            showProfileResult(data);
+            addLog(`Foto encontrada para ${phoneNumber}`, 'success');
         } else {
-            showErrorResult(data.error, phoneNumber);
-            addLog(`❌ ${data.error}`, 'error');
+            showErrorResult(data.error || 'Erro ao buscar foto de perfil');
+            addLog(`Erro: ${data.error}`, 'error');
         }
-
     } catch (error) {
-        const errorMessage = `Erro ao buscar foto: ${error.message}`;
-        showErrorResult(errorMessage, phoneNumber);
-        addLog(`❌ ${errorMessage}`, 'error');
+        showErrorResult('Erro de conexão com a API');
+        addLog(`Erro de conexão: ${error.message}`, 'error');
     } finally {
-        hideLoading(searchBtn, originalText);
+        // Reabilitar botão
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = '<i class="fas fa-search"></i> Buscar';
     }
 }
 
-function showSuccessResult(data) {
-    resultContainer.style.display = 'block';
+// Função para mostrar resultado da busca
+function showProfileResult(data) {
+    resultSection.style.display = 'block';
 
-    resultContent.innerHTML = `
-        <div class="profile-photo">
-            <img src="${data.profilePictureUrl}" alt="Foto de perfil" onerror="this.style.display='none'">
-        </div>
-        <div class="photo-info">
-            <h4>Informações da Foto</h4>
-            <div class="info-item">
-                <span class="info-label">Número:</span>
-                <span class="info-value">${data.number}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">JID:</span>
-                <span class="info-value">${data.jid}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">URL da Foto:</span>
-                <span class="info-value">
-                    <a href="${data.profilePictureUrl}" target="_blank" style="word-break: break-all;">
-                        ${data.profilePictureUrl}
-                    </a>
-                </span>
-            </div>
-        </div>
+    // Atualizar imagem
+    profileImage.src = data.profilePictureUrl;
+    profileImage.alt = `Foto de perfil de ${data.number}`;
+
+    // Atualizar informações
+    profileNumber.textContent = `+${data.number}`;
+    profileStatus.textContent = 'Foto de perfil encontrada';
+
+    // Atualizar link de download
+    downloadBtn.href = data.profilePictureUrl;
+    downloadBtn.download = `profile_${data.number}.jpg`;
+
+    // Scroll para o resultado
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Função para mostrar erro
+function showErrorResult(errorMessage) {
+    resultSection.style.display = 'block';
+
+    // Mostrar imagem de erro
+    profileImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iNjAiIGZpbGw9IiNGNUY1RjUiLz4KPHBhdGggZD0iTTYwIDMwQzQzLjQzMTUgMzAgMzAgNDMuNDMxNSAzMCA2MEMzMCA3Ni41Njg1IDQzLjQzMTUgOTAgNjAgOTBDNzYuNTY4NSA5MCA5MCA3Ni41Njg1IDkwIDYwQzkwIDQzLjQzMTUgNzYuNTY4NSAzMCA2MCAzMFpNNjAgODBDNTIuMzg2IDgwIDQ2IDczLjYxNCA0NiA2NkM0NiA1OC4zODYgNTIuMzg2IDUyIDYwIDUyQzY3LjYxNCA1MiA3NCA1OC4zODYgNzQgNjZDNzQgNzMuNjE0IDY3LjYxNCA4MCA2MCA4MFpNNjAgNTdDNjIuNzYxNCA1NyA2NSA1OS4yMzg2IDY1IDYyVjY4QzY1IDcwLjc2MTQgNjIuNzYxNCA3MyA2MCA3M0M1Ny4yMzg2IDczIDU1IDcwLjc2MTQgNTUgNjhWNjJDNTUgNTkuMjM4NiA1Ny4yMzg2IDU3IDYwIDU3WiIgZmlsbD0iI0NDQ0NDQyIvPgo8L3N2Zz4K';
+    profileImage.alt = 'Erro';
+
+    // Atualizar informações
+    profileNumber.textContent = 'Erro';
+    profileStatus.textContent = errorMessage;
+
+    // Desabilitar botões de ação
+    downloadBtn.style.display = 'none';
+}
+
+// Função para copiar URL da imagem
+async function copyImageUrl() {
+    try {
+        await navigator.clipboard.writeText(profileImage.src);
+        addLog('URL da imagem copiada para a área de transferência', 'success');
+
+        // Feedback visual
+        const btn = event.target.closest('.btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+        btn.style.background = '#25D366';
+        btn.style.color = 'white';
+
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    } catch (error) {
+        addLog('Erro ao copiar URL', 'error');
+    }
+}
+
+// Função para adicionar log
+function addLog(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+
+    let icon = 'info-circle';
+    let color = '#17a2b8';
+
+    switch (type) {
+        case 'success':
+            icon = 'check-circle';
+            color = '#25D366';
+            break;
+        case 'error':
+            icon = 'exclamation-circle';
+            color = '#dc3545';
+            break;
+        case 'warning':
+            icon = 'exclamation-triangle';
+            color = '#ffc107';
+            break;
+    }
+
+    logEntry.innerHTML = `
+        <span class="log-time" style="color: ${color};">[${timestamp}]</span>
+        <span class="log-message"><i class="fas fa-${icon}"></i> ${message}</span>
     `;
+
+    logsContainer.appendChild(logEntry);
+
+    // Scroll para o final
+    logsContainer.scrollTop = logsContainer.scrollHeight;
+
+    // Limitar número de logs (manter apenas os últimos 50)
+    const logs = logsContainer.querySelectorAll('.log-entry');
+    if (logs.length > 50) {
+        logs[0].remove();
+    }
 }
 
-function showErrorResult(error, phoneNumber) {
-    resultContainer.style.display = 'block';
-
-    resultContent.innerHTML = `
-        <div class="error-message">
-            <h4>❌ Erro ao obter foto de perfil</h4>
-            <p><strong>Número:</strong> ${phoneNumber}</p>
-            <p><strong>Erro:</strong> ${error}</p>
-            <p><strong>Possíveis causas:</strong></p>
-            <ul>
-                <li>O número não tem WhatsApp</li>
-                <li>O usuário tem privacidade configurada</li>
-                <li>O número está incorreto</li>
-                <li>WhatsApp não está conectado</li>
-            </ul>
-        </div>
-    `;
-}
-
-function clearResult() {
-    resultContainer.style.display = 'none';
-    resultContent.innerHTML = '';
-    addLog('Resultado limpo', 'info');
-}
-
+// Função para limpar logs
 function clearLogs() {
     logsContainer.innerHTML = '';
     addLog('Logs limpos', 'info');
 }
 
-// Função global para usar exemplos
-function setExample(number) {
-    phoneNumberInput.value = number;
-    addLog(`Exemplo carregado: ${number}`, 'info');
-    phoneNumberInput.focus();
-}
-
-// Verificar status periodicamente
-setInterval(() => {
-    if (isConnected) {
-        checkStatus();
+// Event listeners
+phoneNumberInput.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        searchProfile();
     }
-}, 30000); // Verificar a cada 30 segundos se estiver conectado 
+});
+
+// Formatação automática do número de telefone
+phoneNumberInput.addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, '');
+
+    // Limitar a 15 dígitos
+    if (value.length > 15) {
+        value = value.slice(0, 15);
+    }
+
+    e.target.value = value;
+}); 
