@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API WhatsApp Profile Photo</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fab fa-whatsapp"></i> API WhatsApp Profile Photo</h1>
+            <p>Interface para testar a API de fotos de perfil do WhatsApp</p>
+        </header>
+
+        <div class="status-card">
+            <h2><i class="fas fa-signal"></i> Status da Conexão</h2>
+            <div class="status-indicator" id="statusIndicator">
+                <div class="status-dot"></div>
+                <span id="statusText">Verificando...</span>
+            </div>
+            <div class="status-actions">
+                <button id="checkStatusBtn" class="btn btn-primary">
+                    <i class="fas fa-sync"></i> Verificar Status
+                </button>
+                <button id="connectBtn" class="btn btn-success">
+                    <i class="fas fa-plug"></i> Conectar
+                </button>
+                <button id="disconnectBtn" class="btn btn-danger">
+                    <i class="fas fa-unplug"></i> Desconectar
+                </button>
+            </div>
+        </div>
+
+        <div class="main-card">
+            <h2><i class="fas fa-search"></i> Buscar Foto de Perfil</h2>
+
+            <div class="input-group">
+                <label for="phoneNumber">Número de Telefone:</label>
+                <div class="input-wrapper">
+                    <input type="text" id="phoneNumber" placeholder="Ex: 5511999999999 ou 11-99999-9999" />
+                    <button id="searchBtn" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+                <small class="help-text">
+                    Aceita formatos: 5511999999999, 11999999999, 11-99999-9999, (11) 99999-9999
+                </small>
+            </div>
+
+            <div class="result-container" id="resultContainer" style="display: none;">
+                <div class="result-header">
+                    <h3><i class="fas fa-image"></i> Resultado</h3>
+                    <button id="clearResultBtn" class="btn btn-small">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="result-content" id="resultContent">
+                    <!-- Resultado será inserido aqui -->
+                </div>
+            </div>
+        </div>
+
+        <div class="examples-card">
+            <h2><i class="fas fa-lightbulb"></i> Exemplos de Uso</h2>
+            <div class="examples-grid">
+                <div class="example-item">
+                    <h4>Com código do país</h4>
+                    <code>5511999999999</code>
+                    <button class="btn btn-small" onclick="setExample('5511999999999')">
+                        <i class="fas fa-copy"></i> Usar
+                    </button>
+                </div>
+                <div class="example-item">
+                    <h4>Sem código do país</h4>
+                    <code>11999999999</code>
+                    <button class="btn btn-small" onclick="setExample('11999999999')">
+                        <i class="fas fa-copy"></i> Usar
+                    </button>
+                </div>
+                <div class="example-item">
+                    <h4>Com formatação</h4>
+                    <code>11-99999-9999</code>
+                    <button class="btn btn-small" onclick="setExample('11-99999-9999')">
+                        <i class="fas fa-copy"></i> Usar
+                    </button>
+                </div>
+                <div class="example-item">
+                    <h4>Com parênteses</h4>
+                    <code>(11) 99999-9999</code>
+                    <button class="btn btn-small" onclick="setExample('(11) 99999-9999')">
+                        <i class="fas fa-copy"></i> Usar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="logs-card">
+            <h2><i class="fas fa-terminal"></i> Logs da API</h2>
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry info">
+                    <span class="timestamp">[<span id="currentTime"></span>]</span>
+                    <span class="message">Interface carregada. Clique em "Verificar Status" para começar.</span>
+                </div>
+            </div>
+            <button id="clearLogsBtn" class="btn btn-small">
+                <i class="fas fa-trash"></i> Limpar Logs
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
