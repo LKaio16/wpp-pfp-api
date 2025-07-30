@@ -23,6 +23,7 @@ let currentQR = null;
 
 // Função para inicializar a conexão do WhatsApp
 async function connectToWhatsApp() {
+    console.log('🔗 Iniciando conexão WhatsApp...');
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
     sock = makeWASocket({
@@ -33,8 +34,12 @@ async function connectToWhatsApp() {
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
+        // Log para debug
+        if (connection) {
+            console.log(`📡 Status da conexão: ${connection}`);
+        }
+
         if (qr) {
-            currentQR = qr;
             console.log('\n📱 QR Code gerado! Escaneie com o WhatsApp:');
             console.log('='.repeat(50));
 
@@ -58,18 +63,48 @@ async function connectToWhatsApp() {
                     }
                 });
                 currentQR = qrImage;
+                console.log('✅ QR Code disponível na interface web!');
             } catch (error) {
                 console.log('❌ Erro ao gerar QR Code:', error.message);
                 console.log('🔗 QR Code string:', qr);
+                currentQR = qr; // Usar string como fallback
             }
         }
 
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Conexão fechada devido a ', lastDisconnect?.error, ', reconectando ', shouldReconnect);
 
-            if (shouldReconnect) {
-                connectToWhatsApp();
+            // Verificar se é um erro de restart necessário (código 515)
+            const isRestartRequired = lastDisconnect?.error?.message?.includes('restart required') ||
+                lastDisconnect?.error?.data?.reason === '515' ||
+                lastDisconnect?.error?.data?.code === '515';
+
+            // Verificar se é um erro de Connection Failure
+            const isConnectionFailure = lastDisconnect?.error?.message?.includes('Connection Failure');
+
+            if (isConnectionFailure) {
+                console.log('❌ Erro de conexão - sessão pode estar corrompida');
+                console.log('🔄 Limpe os dados e tente conectar novamente');
+                isConnected = false;
+                currentQR = null;
+            } else if (isRestartRequired) {
+                console.log('🔄 Restart necessário após pairing, reconectando...');
+                // Não limpar isConnected para permitir reconexão
+                setTimeout(() => {
+                    console.log('🔄 Iniciando reconexão após restart...');
+                    connectToWhatsApp();
+                }, 3000); // Aguardar 3 segundos para restart
+            } else if (shouldReconnect && isConnected) {
+                console.log('Conexão perdida, tentando reconectar...');
+                setTimeout(() => {
+                    if (isConnected) { // Só reconectar se ainda estiver marcado como conectado
+                        connectToWhatsApp();
+                    }
+                }, 5000); // Aguardar 5 segundos antes de reconectar
+            } else {
+                console.log('Conexão fechada - não reconectando automaticamente');
+                isConnected = false;
+                currentQR = null;
             }
         } else if (connection === 'open') {
             console.log('✅ Conectado ao WhatsApp!');
@@ -145,46 +180,118 @@ app.post('/connect', async (req, res) => {
     try {
         if (isConnected) {
             return res.json({
+                success: true,
                 message: 'Já conectado ao WhatsApp',
                 connected: true
             });
         }
 
+        // Limpar estado anterior
+        if (sock) {
+            try {
+                sock.end();
+            } catch (e) {
+                // Ignorar erros ao fechar conexão
+            }
+            sock = null;
+        }
+        isConnected = false;
+        currentQR = null;
+
+        // Sempre limpar dados antigos para forçar nova sessão
+        try {
+            const authDir = 'auth_info_baileys';
+            if (fs.existsSync(authDir)) {
+                const files = fs.readdirSync(authDir);
+                files.forEach(file => {
+                    fs.unlinkSync(path.join(authDir, file));
+                });
+                fs.rmdirSync(authDir);
+                console.log('🗑️ Dados de autenticação removidos para nova sessão');
+            }
+        } catch (cleanError) {
+            console.log('⚠️ Erro ao limpar dados:', cleanError.message);
+        }
+
+        console.log('🔄 Iniciando nova conexão com WhatsApp...');
+
+        console.log('📱 Aguarde o QR Code aparecer...');
         await connectToWhatsApp();
 
         res.json({
-            message: 'Iniciando conexão com WhatsApp. Verifique o console para o QR Code.',
+            success: true,
+            message: 'Iniciando conexão com WhatsApp. Aguarde o QR Code...',
             connected: false
         });
 
     } catch (error) {
         console.error('Erro ao conectar:', error);
         res.status(500).json({
+            success: false,
             error: 'Erro ao conectar com WhatsApp',
             message: error.message
         });
     }
 });
 
+// Rota de health check para monitoramento
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        connected: isConnected
+    });
+});
+
 // Rota para desconectar do WhatsApp
-app.post('/disconnect', (req, res) => {
+app.post('/disconnect', async (req, res) => {
     try {
         if (sock) {
+            // Desconectar do WhatsApp
+            await sock.logout();
             sock.end();
             sock = null;
             isConnected = false;
+            currentQR = null;
+
+            // Limpar dados de autenticação
+            try {
+                const authDir = 'auth_info_baileys';
+                if (fs.existsSync(authDir)) {
+                    const files = fs.readdirSync(authDir);
+                    files.forEach(file => {
+                        fs.unlinkSync(path.join(authDir, file));
+                    });
+                    fs.rmdirSync(authDir);
+                    console.log('🗑️ Dados de autenticação removidos');
+                }
+            } catch (cleanError) {
+                console.log('⚠️ Erro ao limpar dados de autenticação:', cleanError.message);
+            }
+
+            console.log('✅ Desconectado do WhatsApp com sucesso');
         }
 
         res.json({
-            message: 'Desconectado do WhatsApp',
+            success: true,
+            message: 'Desconectado do WhatsApp com sucesso',
             connected: false
         });
 
     } catch (error) {
         console.error('Erro ao desconectar:', error);
-        res.status(500).json({
-            error: 'Erro ao desconectar do WhatsApp',
-            message: error.message
+
+        // Mesmo com erro, limpar o estado
+        sock = null;
+        isConnected = false;
+        currentQR = null;
+
+        res.json({
+            success: true,
+            message: 'Desconectado do WhatsApp (com erro, mas estado limpo)',
+            connected: false
         });
     }
 });
@@ -232,8 +339,9 @@ if (!isVercel) {
         console.log(`- GET /profile-photo/5511999999999 - Obter foto de perfil`);
     });
 
-    // Conectar automaticamente ao iniciar (apenas em desenvolvimento)
-    connectToWhatsApp();
+    // Não conectar automaticamente - aguardar comando do usuário
+    console.log('📱 Aguardando comando para conectar ao WhatsApp...');
+    console.log('💡 Clique em "Conectar" na interface para iniciar');
 } else {
     console.log('🚀 API WhatsApp Profile Photo - Deployado no Vercel');
     console.log('📱 Use a interface local para conectar ao WhatsApp');

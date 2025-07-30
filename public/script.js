@@ -143,6 +143,10 @@ async function disconnect() {
     try {
         addLog('Desconectando do WhatsApp...', 'info');
 
+        // Desabilitar botão durante a desconexão
+        disconnectBtn.disabled = true;
+        disconnectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Desconectando...';
+
         const response = await fetch('/disconnect', {
             method: 'POST',
             headers: {
@@ -153,13 +157,25 @@ async function disconnect() {
         const data = await response.json();
 
         if (data.success) {
-            addLog('Desconectado do WhatsApp', 'success');
+            addLog('Desconectado do WhatsApp com sucesso', 'success');
             updateConnectionStatus(false, 'Desconectado do WhatsApp');
+
+            // Limpar resultado se houver
+            resultSection.style.display = 'none';
+
+            // Mostrar QR Code novamente se necessário
+            setTimeout(() => {
+                checkStatus();
+            }, 1000);
         } else {
             addLog(`Erro ao desconectar: ${data.message}`, 'error');
         }
     } catch (error) {
         addLog(`Erro ao desconectar: ${error.message}`, 'error');
+    } finally {
+        // Reabilitar botão
+        disconnectBtn.disabled = false;
+        disconnectBtn.innerHTML = '<i class="fas fa-unlink"></i> Desconectar';
     }
 }
 
